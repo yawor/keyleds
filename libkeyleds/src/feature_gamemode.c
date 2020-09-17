@@ -36,11 +36,10 @@ enum leds_feature_function {    /* Function table for KEYLEDS_FEATURE_GAMEMODE *
 
 /** Get the maximum number of blocked keys.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param [out] nb Maximum number of keys that can be blocked when game mode is enabled.
  * @return `true` on success, `false` on error.
  */
-KEYLEDS_EXPORT bool keyleds_gamemode_max(Keyleds * device, uint8_t target_id, unsigned * nb)
+KEYLEDS_EXPORT bool keyleds_gamemode_max(Keyleds * device, unsigned * nb)
 {
     uint8_t data[1];
 
@@ -48,7 +47,7 @@ KEYLEDS_EXPORT bool keyleds_gamemode_max(Keyleds * device, uint8_t target_id, un
     assert(nb != NULL);
 
     if (keyleds_call(device, data, sizeof(data),
-                     target_id, KEYLEDS_FEATURE_GAMEMODE, F_GET_MAX,
+                     KEYLEDS_FEATURE_GAMEMODE, F_GET_MAX,
                      0, NULL) < 0) {
         return false;
     }
@@ -59,14 +58,12 @@ KEYLEDS_EXPORT bool keyleds_gamemode_max(Keyleds * device, uint8_t target_id, un
 
 /** Send a group of keys to the device.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param ids Array of key identifiers to affect.
  * @param ids_nb Number of keys in `ids`.
  * @param set `true` to add keys to the list, `false` to remove them.
  * @return `true` on success, `false` on error.
  */
-static bool gamemode_send(Keyleds * device, uint8_t target_id,
-                          const uint8_t * ids, unsigned ids_nb, bool set)
+static bool gamemode_send(Keyleds * device, const uint8_t * ids, unsigned ids_nb, bool set)
 {
     assert(device != NULL);
     assert(ids != NULL);
@@ -75,7 +72,7 @@ static bool gamemode_send(Keyleds * device, uint8_t target_id,
         unsigned batch_size = KEYS_PER_COMMAND;
         if (batch_size > ids_nb - offset) { batch_size = ids_nb - offset; }
         if (keyleds_call(device, NULL, 0,
-                         target_id, KEYLEDS_FEATURE_GAMEMODE, set ? F_BLOCK_KEYS : F_UNBLOCK_KEYS,
+                         KEYLEDS_FEATURE_GAMEMODE, set ? F_BLOCK_KEYS : F_UNBLOCK_KEYS,
                          batch_size, ids + offset) < 0) {
             return false;
         }
@@ -86,43 +83,38 @@ static bool gamemode_send(Keyleds * device, uint8_t target_id,
 
 /** Add a group of keys to blocked list.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param ids Array of key identifiers to add.
  * @param ids_nb Number of keys in `ids`.
  * @return `true` on success, `false` on error.
  */
-KEYLEDS_EXPORT bool keyleds_gamemode_set(Keyleds * device, uint8_t target_id,
-                                         const uint8_t * ids, unsigned ids_nb)
+KEYLEDS_EXPORT bool keyleds_gamemode_set(Keyleds * device, const uint8_t * ids, unsigned ids_nb)
 {
-    return gamemode_send(device, target_id, ids, ids_nb, true);
+    return gamemode_send(device, ids, ids_nb, true);
 }
 
 
 /** Remove a group of keys from blocked list.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param ids Array of key identifiers to remove.
  * @param ids_nb Number of keys in `ids`.
  * @return `true` on success, `false` on error.
  */
-KEYLEDS_EXPORT bool keyleds_gamemode_clear(Keyleds * device, uint8_t target_id,
-                                           const uint8_t * ids, unsigned ids_nb)
+KEYLEDS_EXPORT bool keyleds_gamemode_clear(Keyleds * device, const uint8_t * ids, unsigned ids_nb)
 {
-    return gamemode_send(device, target_id, ids, ids_nb, false);
+    return gamemode_send(device, ids, ids_nb, false);
 }
 
 
 /** Clear the blocked keys list.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @return `true` on success, `false` on error.
  */
-KEYLEDS_EXPORT bool keyleds_gamemode_reset(Keyleds * device, uint8_t target_id)
+KEYLEDS_EXPORT bool keyleds_gamemode_reset(Keyleds * device)
 {
     assert(device != NULL);
 
     if (keyleds_call(device, NULL, 0,
-                     target_id, KEYLEDS_FEATURE_GAMEMODE, F_CLEAR, 0, NULL) < 0) {
+                     KEYLEDS_FEATURE_GAMEMODE, F_CLEAR, 0, NULL) < 0) {
         return false;
     }
     return true;

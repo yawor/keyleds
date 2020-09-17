@@ -119,7 +119,7 @@ bool enum_find_by_serial(const char * serial, struct dev_enum_item ** out)
             udev_device_unref(hiddev);
             continue;
         }
-        if ((device = keyleds_open(devnode, KEYLEDSCTL_APP_ID)) == NULL) {
+        if ((device = keyleds_open(devnode, KEYLEDS_TARGET_DEFAULT, KEYLEDSCTL_APP_ID)) == NULL) {
             udev_device_unref(hiddev);
             continue;
         }
@@ -192,7 +192,7 @@ bool enum_list_devices(struct dev_enum_item ** out, unsigned * out_nb)
         if (vendor_id != LOGITECH_VENDOR_ID) { goto err_enum_release_device; }
 
         /* Attempt to open device */
-        device = keyleds_open(devnode, KEYLEDSCTL_APP_ID);
+        device = keyleds_open(devnode, KEYLEDS_TARGET_DEFAULT, KEYLEDSCTL_APP_ID);
         if (device == NULL) { goto err_enum_release_device; }
         keyleds_close(device);
 

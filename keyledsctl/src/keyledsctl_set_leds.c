@@ -151,15 +151,14 @@ int main_set_leds(int argc, char * argv[])
             continue;
         }
         if (keys_nb > 0) {
-            if (!keyleds_set_leds(device, KEYLEDS_TARGET_DEFAULT,
-                                block_id, keys, keys_nb)) {
+            if (!keyleds_set_leds(device, block_id, keys, keys_nb)) {
                 fprintf(stderr, "%s: set leds -- %s\n", argv[0], keyleds_get_error_str());
             }
             keys_nb = 0;
         }
         if (options.directives[idx].id == KEYLEDS_KEY_ID_INVALID) {
             if (!keyleds_set_led_block(
-                device, KEYLEDS_TARGET_DEFAULT,
+                device,
                 options.directives[idx].block_id,
                 options.directives[idx].color.red,
                 options.directives[idx].color.green,
@@ -179,14 +178,13 @@ int main_set_leds(int argc, char * argv[])
     }
 
     if (keys_nb > 0) {
-        if (!keyleds_set_leds(device, KEYLEDS_TARGET_DEFAULT,
-                              block_id, keys, keys_nb)) {
+        if (!keyleds_set_leds(device, block_id, keys, keys_nb)) {
             fprintf(stderr, "%s: set leds -- %s\n", argv[0], keyleds_get_error_str());
         }
     }
 
     }
-    keyleds_commit_leds(device, KEYLEDS_TARGET_DEFAULT);
+    keyleds_commit_leds(device);
 
     keyleds_close(device);
     free(options.directives);

@@ -37,13 +37,11 @@ enum leds_feature_function {    /* Function table for KEYLEDS_FEATURE_LEDS */
 
 /** Get the full description of LED blocks.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param [out] out Address of a pointer that will hold the description on success.
  *                  Must be freed using keyleds_free_block_info().
  * @return `true` on success, `false` on error.
  */
-KEYLEDS_EXPORT bool keyleds_get_block_info(Keyleds * device, uint8_t target_id,
-                                           struct keyleds_keyblocks_info ** out)
+KEYLEDS_EXPORT bool keyleds_get_block_info(Keyleds * device, struct keyleds_keyblocks_info ** out)
 {
     uint8_t data[5];    /* max of F_GET_KEYBLOCKS and F_GET_BLOCK_INFO */
     unsigned idx, info_idx, length;
@@ -54,7 +52,7 @@ KEYLEDS_EXPORT bool keyleds_get_block_info(Keyleds * device, uint8_t target_id,
     assert(out != NULL);
 
     if (keyleds_call(device, data, (unsigned)sizeof(data),
-                     target_id, KEYLEDS_FEATURE_LEDS, F_GET_KEYBLOCKS, 0, NULL) < 0) {
+                     KEYLEDS_FEATURE_LEDS, F_GET_KEYBLOCKS, 0, NULL) < 0) {
         return false;
     }
 
@@ -80,7 +78,7 @@ KEYLEDS_EXPORT bool keyleds_get_block_info(Keyleds * device, uint8_t target_id,
         if ((mask & block_id) == 0) { continue; }
 
         if (keyleds_call(device, data, (unsigned)sizeof(data),
-                         target_id, KEYLEDS_FEATURE_LEDS, F_GET_BLOCK_INFO,
+                         KEYLEDS_FEATURE_LEDS, F_GET_BLOCK_INFO,
                          2, (uint8_t[]){(uint8_t)(block_id >> 8), (uint8_t)block_id}) < 0) { continue; }
 
         info->blocks[info_idx].block_id = block_id;
@@ -107,15 +105,13 @@ KEYLEDS_EXPORT void keyleds_free_block_info(struct keyleds_keyblocks_info * info
 
 /** Retrieve current LED status for a block.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param block_id Block to target.
  * @param [out] keys Color table with `keys_nb` entries, filled upon success.
  * @param offset Which key to start at.
  * @param keys_nb Number of keys to retrieve.
  * @return `true` on success, `false` on error.
  */
-KEYLEDS_EXPORT bool keyleds_get_leds(Keyleds * device, uint8_t target_id,
-                                     keyleds_block_id_t block_id,
+KEYLEDS_EXPORT bool keyleds_get_leds(Keyleds * device, keyleds_block_id_t block_id,
                                      struct keyleds_key_color * keys, uint16_t offset, unsigned keys_nb)
 {
     unsigned done = 0;
@@ -132,7 +128,7 @@ KEYLEDS_EXPORT bool keyleds_get_leds(Keyleds * device, uint8_t target_id,
         unsigned data_offset;
 
         data_size = keyleds_call(device, data, sizeof(data),
-                                 target_id, KEYLEDS_FEATURE_LEDS, F_GET_LEDS,
+                                 KEYLEDS_FEATURE_LEDS, F_GET_LEDS,
                                  4, (uint8_t[]){(uint8_t)(block_id >> 8), (uint8_t)block_id,
                                                 (uint8_t)(offset >> 8), (uint8_t)offset});
         if (data_size < 0) { return false; }
@@ -160,14 +156,12 @@ KEYLEDS_EXPORT bool keyleds_get_leds(Keyleds * device, uint8_t target_id,
  * Updates an internal buffer on the device. Actual lights are not updated until
  * keyleds_commit_leds() is called.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param block_id Block to target, all keys must belong to this block.
  * @param keys Color table with `keys_nb` entries.
  * @param keys_nb Number of keys to send.
  * @return `true` on success, `false` on error.
  */
-KEYLEDS_EXPORT bool keyleds_set_leds(Keyleds * device, uint8_t target_id,
-                                     keyleds_block_id_t block_id,
+KEYLEDS_EXPORT bool keyleds_set_leds(Keyleds * device, keyleds_block_id_t block_id,
                                      const struct keyleds_key_color * keys, unsigned keys_nb)
 {
     assert(device != NULL);
@@ -195,7 +189,7 @@ KEYLEDS_EXPORT bool keyleds_set_leds(Keyleds * device, uint8_t target_id,
         }
 
         if (keyleds_call(device, NULL, 0,
-                         target_id, KEYLEDS_FEATURE_LEDS, F_SET_LEDS,
+                         KEYLEDS_FEATURE_LEDS, F_SET_LEDS,
                          4 + batch_length * 4, data) < 0) {
             return false;
         }
@@ -208,20 +202,18 @@ KEYLEDS_EXPORT bool keyleds_set_leds(Keyleds * device, uint8_t target_id,
  * Updates an internal buffer on the device. Actual lights are not updated until
  * keyleds_commit_leds() is called.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param block_id Block to target.
  * @param red Red brightness from 0 (off) to 255 (full power).
  * @param green Green brightness from 0 (off) to 255 (full power).
  * @param blue Blue brightness from 0 (off) to 255 (full power).
  * @return `true` on success, `false` on error.
  */
-KEYLEDS_EXPORT bool keyleds_set_led_block(Keyleds * device, uint8_t target_id,
-                                          keyleds_block_id_t block_id,
+KEYLEDS_EXPORT bool keyleds_set_led_block(Keyleds * device, keyleds_block_id_t block_id,
                                           uint8_t red, uint8_t green, uint8_t blue)
 {
     assert(device != NULL);
     assert((unsigned)block_id <= UINT16_MAX);
-    return keyleds_call(device, NULL, 0, target_id, KEYLEDS_FEATURE_LEDS, F_SET_BLOCK_LEDS,
+    return keyleds_call(device, NULL, 0, KEYLEDS_FEATURE_LEDS, F_SET_BLOCK_LEDS,
                         5, (uint8_t[]){(uint8_t)(block_id >> 8), (uint8_t)block_id,
                                        red, green, blue}) >= 0;
 }
@@ -231,14 +223,13 @@ KEYLEDS_EXPORT bool keyleds_set_led_block(Keyleds * device, uint8_t target_id,
  * Other functions only update an internal buffer on the device. The actual colors
  * of the lights are only shown after a commit.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @return `true` on success, `false` on error.
  * @note This device function takes relatively longer than most others. Testing on a G410
  *       showed 10 to 15 milliseconds runtimes.
  */
-KEYLEDS_EXPORT bool keyleds_commit_leds(Keyleds * device, uint8_t target_id)
+KEYLEDS_EXPORT bool keyleds_commit_leds(Keyleds * device)
 {
     assert(device != NULL);
-    return keyleds_call(device, NULL, 0, target_id, KEYLEDS_FEATURE_LEDS, F_COMMIT,
+    return keyleds_call(device, NULL, 0, KEYLEDS_FEATURE_LEDS, F_COMMIT,
                         0, NULL) >= 0;
 }

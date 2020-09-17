@@ -37,25 +37,24 @@ enum feature_feature_function { /* Function table for KEYLEDS_FEATURE_FEATURE */
 
 /** Retrieve device protocol version and recommended use.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param [out] version Detected protocol version. May be `NULL` if not interested.
  * @param [out] handler Detected recommended use. May be `NULL` if not interested.
  * @return `true` on success, `false` on error.
  */
-KEYLEDS_EXPORT bool keyleds_get_protocol(struct keyleds_device * device, uint8_t target_id,
+KEYLEDS_EXPORT bool keyleds_get_protocol(struct keyleds_device * device,
                                          unsigned * version, keyleds_device_handler_t * handler)
 {
     /* Protocol detection is a bit weird, because HIDPP1 does not have a version query.
      * The trick is HIDPP2+ version query results in a specific error code on HIDPP1 devices,
      * that we detect manually. Therefore we cannot use keyleds_call()'s built-in filtering.
      */
-    if (!keyleds_send(device, target_id, KEYLEDS_FEATURE_IDX_ROOT, F_PING, 0, NULL)) {
+    if (!keyleds_send(device, KEYLEDS_FEATURE_IDX_ROOT, F_PING, 0, NULL)) {
         return false;
     }
 
     size_t size;
     uint8_t buffer[1 + device->max_report_size];
-    if (!keyleds_receive(device, target_id, KEYLEDS_FEATURE_IDX_ROOT, buffer, &size)) {
+    if (!keyleds_receive(device, KEYLEDS_FEATURE_IDX_ROOT, buffer, &size)) {
         return false;
     }
 
@@ -75,23 +74,22 @@ KEYLEDS_EXPORT bool keyleds_get_protocol(struct keyleds_device * device, uint8_t
  * Send a ping request report, then discard all received reports until the matching pong.
  * Use as a recovery mechanism after another call has failed.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @return `true` on success, `false` on error.
  */
-KEYLEDS_EXPORT bool keyleds_ping(Keyleds * device, uint8_t target_id)
+KEYLEDS_EXPORT bool keyleds_ping(Keyleds * device)
 {
     /* Increment ping sequence number, wrapping within range [1..255] */
     uint8_t payload = device->ping_seq;
     device->ping_seq = (uint8_t)(payload == UINT8_MAX ? 1 : payload + 1);
 
-    if (!keyleds_send(device, target_id, KEYLEDS_FEATURE_IDX_ROOT, F_PING,
+    if (!keyleds_send(device, KEYLEDS_FEATURE_IDX_ROOT, F_PING,
                       3, (uint8_t[]){0, 0, payload})) {
         return false;
     }
 
     uint8_t buffer[1 + device->max_report_size];
     do {
-        if (!keyleds_receive(device, target_id, KEYLEDS_FEATURE_IDX_ROOT, buffer, NULL)) {
+        if (!keyleds_receive(device, KEYLEDS_FEATURE_IDX_ROOT, buffer, NULL)) {
             return false;
         }
     } while (keyleds_response_data(device, buffer)[2] != payload);
@@ -102,14 +100,13 @@ KEYLEDS_EXPORT bool keyleds_ping(Keyleds * device, uint8_t target_id)
 
 /** Read the number of available features on device.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @return The number of features on success, 0 on error. A device cannot have 0 feature.
  */
-KEYLEDS_EXPORT unsigned keyleds_get_feature_count(struct keyleds_device * device, uint8_t target_id)
+KEYLEDS_EXPORT unsigned keyleds_get_feature_count(struct keyleds_device * device)
 {
     uint8_t data[1];
     if (keyleds_call(device, data, sizeof(data),
-                     target_id, KEYLEDS_FEATURE_FEATURE, F_GET_FEATURE_COUNT, 0, NULL) < 0) {
+                     KEYLEDS_FEATURE_FEATURE, F_GET_FEATURE_COUNT, 0, NULL) < 0) {
         return 0;
     }
     return (unsigned)data[0];
@@ -118,13 +115,11 @@ KEYLEDS_EXPORT unsigned keyleds_get_feature_count(struct keyleds_device * device
 
 /** Get the feature identifier for a feature slot.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param feature_idx Index of the feature slot.
  * @return Feature identifier, or 0 on failure.
  * @note “ROOT” feature always has slot 0, which is an invalid value for `feature_idx`.
  */
-KEYLEDS_EXPORT uint16_t keyleds_get_feature_id(struct keyleds_device * device,
-                                               uint8_t target_id, uint8_t feature_idx)
+KEYLEDS_EXPORT uint16_t keyleds_get_feature_id(struct keyleds_device * device, uint8_t feature_idx)
 {
     assert(device != NULL);
     assert(feature_idx != KEYLEDS_FEATURE_IDX_ROOT);
@@ -138,7 +133,7 @@ KEYLEDS_EXPORT uint16_t keyleds_get_feature_id(struct keyleds_device * device,
 
     /* See whether we have it cached alread */
     for (idx = 0; device->features[idx].id != 0; idx += 1) {
-        if (device->features[idx].target_id == target_id &&
+        if (device->features[idx].target_id == device->target_id &&
             device->features[idx].index == feature_idx) {
             return device->features[idx].id;
         }
@@ -146,7 +141,7 @@ KEYLEDS_EXPORT uint16_t keyleds_get_feature_id(struct keyleds_device * device,
 
     /* Nope, request it */
     if (keyleds_call(device, data, sizeof(data),
-                     target_id, KEYLEDS_FEATURE_FEATURE, F_GET_FEATURE_ID,
+                     KEYLEDS_FEATURE_FEATURE, F_GET_FEATURE_ID,
                      1, (uint8_t[]){feature_idx}) < 0) {
         KEYLEDS_LOG(ERROR, "get_feature_id failed");
         return 0;
@@ -155,7 +150,7 @@ KEYLEDS_EXPORT uint16_t keyleds_get_feature_id(struct keyleds_device * device,
     /* Add it to the cache for next time */
     feature_id = (uint16_t)((data[0] << 8) | data[1]);
     device->features = realloc(device->features, (idx + 2) * sizeof(device->features[0]));
-    device->features[idx].target_id = target_id;
+    device->features[idx].target_id = device->target_id;
     device->features[idx].id = feature_id;
     device->features[idx].index = feature_idx;
     device->features[idx].reserved = (data[2] & (1<<5)) != 0;
@@ -170,13 +165,11 @@ KEYLEDS_EXPORT uint16_t keyleds_get_feature_id(struct keyleds_device * device,
 
 /** Get the feature slot index for a feature identifier.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param feature_id Identifier of the feature, from one of the `KEYLEDS_FEATURE_*` values.
  * @return Feature slot index, or 0 on failure.
  * @note “ROOT” feature always has slot 0, and is an invalid value for `feature_id`.
  */
-KEYLEDS_EXPORT uint8_t keyleds_get_feature_index(struct keyleds_device * device,
-                                                 uint8_t target_id, uint16_t feature_id)
+KEYLEDS_EXPORT uint8_t keyleds_get_feature_index(struct keyleds_device * device, uint16_t feature_id)
 {
     assert(device != NULL);
     assert(feature_id != KEYLEDS_FEATURE_ROOT);
@@ -190,7 +183,7 @@ KEYLEDS_EXPORT uint8_t keyleds_get_feature_index(struct keyleds_device * device,
 
     /* See whether we have it cached already */
     for (idx = 0; device->features[idx].id != 0; idx += 1) {
-        if (device->features[idx].target_id == target_id &&
+        if (device->features[idx].target_id == device->target_id &&
             device->features[idx].id == feature_id) {
             feature_idx = device->features[idx].index;
             if (feature_idx == 0) { keyleds_set_error(KEYLEDS_ERROR_FEATURE_NOT_FOUND); }
@@ -200,7 +193,7 @@ KEYLEDS_EXPORT uint8_t keyleds_get_feature_index(struct keyleds_device * device,
 
     /* Nope, request it */
     if (keyleds_call(device, data, sizeof(data),
-                     target_id, KEYLEDS_FEATURE_ROOT, F_GET_FEATURE,
+                     KEYLEDS_FEATURE_ROOT, F_GET_FEATURE,
                      2, (uint8_t[]){(uint8_t)(feature_id >> 8), (uint8_t)feature_id}) < 0) {
         KEYLEDS_LOG(ERROR, "get_feature_index failed");
         return 0;
@@ -210,7 +203,7 @@ KEYLEDS_EXPORT uint8_t keyleds_get_feature_index(struct keyleds_device * device,
 
     /* Add it to the cache for next time */
     device->features = realloc(device->features, (idx + 2) * sizeof(device->features[0]));
-    device->features[idx].target_id = target_id;
+    device->features[idx].target_id = device->target_id;
     device->features[idx].id = feature_id;
     device->features[idx].index = feature_idx;
     device->features[idx].reserved = (data[1] & (1<<5)) != 0;

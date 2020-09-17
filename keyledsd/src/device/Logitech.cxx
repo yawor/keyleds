@@ -70,14 +70,14 @@ Logitech::~Logitech() = default;
 
 std::unique_ptr<keyleds::device::Device> Logitech::open(const std::string & path)
 {
-    auto device = device_ptr(keyleds_open(path.c_str(), KEYLEDSD_APP_ID));
+    auto device = device_ptr(keyleds_open(path.c_str(), KEYLEDS_TARGET_DEFAULT, KEYLEDSD_APP_ID));
     if (device == nullptr) { throw error(keyleds_get_error_str(), keyleds_get_errno()); }
 
     auto type = getType(device.get());
     auto name = getName(device.get());
     std::string model, serial, firmware;
     parseVersion(device.get(), &model, &serial, &firmware);
-    auto layout = keyleds_keyboard_layout(device.get(), KEYLEDS_TARGET_DEFAULT);
+    auto layout = keyleds_keyboard_layout(device.get());
     auto blocks = getBlocks(device.get());
 
     return std::unique_ptr<Logitech>(new Logitech(
@@ -129,12 +129,12 @@ bool Logitech::resync() noexcept
     // recovery, it is a normal outcome for it to be enable to resync device
     // communications.
     return keyleds_flush_fd(m_device.get()) &&
-           keyleds_ping(m_device.get(), KEYLEDS_TARGET_DEFAULT);
+           keyleds_ping(m_device.get());
 }
 
 void Logitech::fillColor(const KeyBlock & block, const RGBColor color)
 {
-    if (!keyleds_set_led_block(m_device.get(), KEYLEDS_TARGET_DEFAULT, keyleds_block_id_t(block.id()),
+    if (!keyleds_set_led_block(m_device.get(), keyleds_block_id_t(block.id()),
                                color.red, color.green, color.blue)) {
         throw error(keyleds_get_error_str(), keyleds_get_errno());
     }
@@ -148,7 +148,7 @@ void Logitech::setColors(const KeyBlock & block, const ColorDirective colors[], 
                    [](const auto & color) -> struct keyleds_key_color
                    { return { color.id, color.red, color.green, color.blue }; });
 
-    if (!keyleds_set_leds(m_device.get(), KEYLEDS_TARGET_DEFAULT, keyleds_block_id_t(block.id()),
+    if (!keyleds_set_leds(m_device.get(), keyleds_block_id_t(block.id()),
                           buffer, size)) {
         throw error(keyleds_get_error_str(), keyleds_get_errno());
     }
@@ -160,7 +160,7 @@ void Logitech::getColors(const KeyBlock & block, ColorDirective colors[])
 
     struct keyleds_key_color buffer[block.keys().size()];
 
-    if (!keyleds_get_leds(m_device.get(), KEYLEDS_TARGET_DEFAULT, keyleds_block_id_t(block.id()),
+    if (!keyleds_get_leds(m_device.get(), keyleds_block_id_t(block.id()),
                           buffer, 0, static_cast<unsigned>(block.keys().size()))) {
         throw error(keyleds_get_error_str(), keyleds_get_errno());
     }
@@ -171,7 +171,7 @@ void Logitech::getColors(const KeyBlock & block, ColorDirective colors[])
 
 void Logitech::commitColors()
 {
-    if (!keyleds_commit_leds(m_device.get(), KEYLEDS_TARGET_DEFAULT)) {
+    if (!keyleds_commit_leds(m_device.get())) {
         throw error(keyleds_get_error_str(), keyleds_get_errno());
     }
 }
@@ -183,7 +183,7 @@ void Logitech::commitColors()
 Logitech::Type Logitech::getType(struct keyleds_device * device)
 {
     keyleds_device_type_t type;
-    if (!keyleds_get_device_type(device, KEYLEDS_TARGET_DEFAULT, &type)) {
+    if (!keyleds_get_device_type(device, &type)) {
         throw error(keyleds_get_error_str(), keyleds_get_errno());
     }
     switch(type) {
@@ -202,7 +202,7 @@ Logitech::Type Logitech::getType(struct keyleds_device * device)
 std::string Logitech::getName(struct keyleds_device * device)
 {
     char * name;
-    if (!keyleds_get_device_name(device, KEYLEDS_TARGET_DEFAULT, &name)) {
+    if (!keyleds_get_device_name(device, &name)) {
         throw error(keyleds_get_error_str(), keyleds_get_errno());
     }
     // Wrap the pointer in a smart pointer in case string creation throws
@@ -213,7 +213,7 @@ std::string Logitech::getName(struct keyleds_device * device)
 Logitech::block_list Logitech::getBlocks(struct keyleds_device * device)
 {
     struct keyleds_keyblocks_info * info;
-    if (!keyleds_get_block_info(device, KEYLEDS_TARGET_DEFAULT, &info)) {
+    if (!keyleds_get_block_info(device, &info)) {
         throw error(keyleds_get_error_str(), keyleds_get_errno());
     }
     // Wrap retrieved data in a smart pointer so it is freed if something throws
@@ -228,7 +228,7 @@ Logitech::block_list Logitech::getBlocks(struct keyleds_device * device)
         // But we don't attempt to retrieve a list
         if (block.nb_keys > 0) {
             struct keyleds_key_color keys[block.nb_keys];
-            if (!keyleds_get_leds(device, KEYLEDS_TARGET_DEFAULT, block.block_id,
+            if (!keyleds_get_leds(device, block.block_id,
                                 keys, 0, block.nb_keys)) {
                 throw error(keyleds_get_error_str(), keyleds_get_errno());
             }
@@ -254,7 +254,7 @@ void Logitech::parseVersion(struct keyleds_device * device, std::string * model,
                             std::string * serial, std::string * firmware)
 {
     struct keyleds_device_version * version;
-    if (!keyleds_get_device_version(device, KEYLEDS_TARGET_DEFAULT, &version)) {
+    if (!keyleds_get_device_version(device, &version)) {
         throw error(keyleds_get_error_str(), keyleds_get_errno());
     }
     // Wrap retrieved data in a smart pointer so it is freed if something throws

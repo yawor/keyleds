@@ -80,7 +80,7 @@ int main_gkeys(int argc, char * argv[])
     device = auto_select_device(options.device);
     if (device == NULL) { return 2; }
 
-    if (!keyleds_gkeys_enable(device, KEYLEDS_TARGET_DEFAULT, options.enable)) {
+    if (!keyleds_gkeys_enable(device, options.enable)) {
         fprintf(stderr, "Setting G-keys mode info failed: %s\n", keyleds_get_error_str());
         return 3;
     }

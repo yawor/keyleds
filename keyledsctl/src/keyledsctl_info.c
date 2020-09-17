@@ -76,7 +76,7 @@ int main_info(int argc, char * argv[])
     if (device == NULL) { return 2; }
 
     /* Device name */
-    if (!keyleds_get_device_name(device, KEYLEDS_TARGET_DEFAULT, &name)) {
+    if (!keyleds_get_device_name(device, &name)) {
         (void)fprintf(stderr, "Get device name failed: %s\n", keyleds_get_error_str());
         result = 3;
         goto err_main_info_close;
@@ -85,7 +85,7 @@ int main_info(int argc, char * argv[])
     keyleds_free_device_name(name);
 
     /* Device type */
-    if (!keyleds_get_device_type(device, KEYLEDS_TARGET_DEFAULT, &type)) {
+    if (!keyleds_get_device_type(device, &type)) {
         (void)fprintf(stderr, "Get device type failed: %s\n", keyleds_get_error_str());
         result = 3;
         goto err_main_info_close;
@@ -94,7 +94,7 @@ int main_info(int argc, char * argv[])
     (void)printf("Type:           %s\n", str != NULL ? str : "unknown");
 
     /* Device software version */
-    if (!keyleds_get_device_version(device, KEYLEDS_TARGET_DEFAULT, &info)) {
+    if (!keyleds_get_device_version(device, &info)) {
         (void)fprintf(stderr, "Get device version failed: %s\n", keyleds_get_error_str());
         result = 3;
         goto err_main_info_close;
@@ -121,11 +121,11 @@ int main_info(int argc, char * argv[])
     keyleds_free_device_version(info);
 
     /* Device feature support */
-    feature_count = keyleds_get_feature_count(device, KEYLEDS_TARGET_DEFAULT);
+    feature_count = keyleds_get_feature_count(device);
     feature_names = malloc(feature_count * sizeof(feature_names[0]));
     (void)printf("Features:       [");
     for (idx = 1; idx <= feature_count; idx += 1) {
-        uint16_t fid = keyleds_get_feature_id(device, KEYLEDS_TARGET_DEFAULT, idx);
+        uint16_t fid = keyleds_get_feature_id(device, idx);
         feature_names[idx - 1] = keyleds_lookup_string(keyleds_feature_names, fid);
         (void)printf(idx == 1 ? "%04x" : ", %04x", fid);
     }
@@ -137,14 +137,14 @@ int main_info(int argc, char * argv[])
     free(feature_names);
 
     /* GKeys features */
-    if (keyleds_gkeys_count(device, KEYLEDS_TARGET_DEFAULT, &gkeys_number)) {
+    if (keyleds_gkeys_count(device, &gkeys_number)) {
         (void)printf("G-keys: %u\n", gkeys_number);
     }
 
     /* Reportrate feature */
-    if (keyleds_get_reportrates(device, KEYLEDS_TARGET_DEFAULT, &report_rates)) {
+    if (keyleds_get_reportrates(device, &report_rates)) {
         unsigned current_rate = 0;
-        keyleds_get_reportrate(device, KEYLEDS_TARGET_DEFAULT, &current_rate);
+        keyleds_get_reportrate(device, &current_rate);
         (void)printf("Report rates:  ");
         for (idx = 0; report_rates[idx] > 0; idx += 1) {
             (void)printf(report_rates[idx] == current_rate ? " [%dms]" : " %dms",
@@ -155,7 +155,7 @@ int main_info(int argc, char * argv[])
     }
 
     /* Leds feature */
-    if (keyleds_get_block_info(device, KEYLEDS_TARGET_DEFAULT, &led_info)) {
+    if (keyleds_get_block_info(device, &led_info)) {
         for (idx = 0; idx < led_info->length; idx += 1) {
             (void)printf("LED block[%02x]:  %3d keys, max_rgb(%d, %d, %d)\n",
                          led_info->blocks[idx].block_id,

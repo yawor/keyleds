@@ -37,10 +37,10 @@ Keyleds * auto_select_device(const char * dev_path)
                 (void)fprintf(stderr, "Could not locate device with serial %s\n", dev_path);
                 return NULL;
             }
-            device = keyleds_open(item->path, KEYLEDSCTL_APP_ID);
+            device = keyleds_open(item->path, KEYLEDS_TARGET_DEFAULT, KEYLEDSCTL_APP_ID);
             enum_free_item(item);
         } else {
-            device = keyleds_open(dev_path, KEYLEDSCTL_APP_ID);
+            device = keyleds_open(dev_path, KEYLEDS_TARGET_DEFAULT, KEYLEDSCTL_APP_ID);
         }
         if (device == NULL) {
             (void)fprintf(stderr, "Cannot open %s: %s\n", dev_path,
@@ -56,7 +56,7 @@ Keyleds * auto_select_device(const char * dev_path)
 
     if (items_nb == 1) {
         LOG(INFO, "Selecting device %s", items[0].path);
-        device = keyleds_open(items[0].path, KEYLEDSCTL_APP_ID);
+        device = keyleds_open(items[0].path, KEYLEDS_TARGET_DEFAULT, KEYLEDSCTL_APP_ID);
         if (device == NULL) {
             (void)fprintf(stderr, "Cannot open %s: %s\n", items[0].path,
                           keyleds_get_error_str());

@@ -36,6 +36,9 @@
 
 /** Open a device file.
  * @param path Path to a HID device node to open.
+ * @param target_id The device's target identifier, for devices behind a unifying receiver.
+ *                  for the receiver itself, or for directly attached devices, use
+ *                  KEYLEDS_TARGET_DEFAULT.
  * @param app_id Application identifier to use for all communication with the device.
  * @return Opaque pointer representing the device, or `NULL` on failure, in which case
  *         the error can be retrieved with keyleds_get_errno().
@@ -47,13 +50,14 @@
  * still must be closed in the child to free resources.
  * @sa keyleds_close
  */
-KEYLEDS_EXPORT Keyleds * keyleds_open(const char * path, uint8_t app_id)
+KEYLEDS_EXPORT Keyleds * keyleds_open(const char * path, uint8_t target_id, uint8_t app_id)
 {
     Keyleds * dev = malloc(sizeof(Keyleds));
     struct hidraw_report_descriptor descriptor;
     unsigned version;
 
     dev->app_id = app_id;
+    dev->target_id = target_id;
     do { dev->ping_seq = (uint8_t)rand(); } while (dev->ping_seq == 0);
     dev->timeout = KEYLEDS_CALL_TIMEOUT_US;
     dev->gkeys_cb = NULL;
@@ -90,7 +94,7 @@ KEYLEDS_EXPORT Keyleds * keyleds_open(const char * path, uint8_t app_id)
     }
 
     /* Check device's protocol version */
-    if (!keyleds_get_protocol(dev, KEYLEDS_TARGET_DEFAULT, &version, NULL)) {
+    if (!keyleds_get_protocol(dev, &version, NULL)) {
         goto error_free_reports;
     }
 
@@ -100,7 +104,7 @@ KEYLEDS_EXPORT Keyleds * keyleds_open(const char * path, uint8_t app_id)
     }
 
     /* Ensure HIDPP is functionning properly */
-    if (!keyleds_ping(dev, KEYLEDS_TARGET_DEFAULT)) {
+    if (!keyleds_ping(dev)) {
         goto error_free_reports;
     }
 
@@ -192,16 +196,13 @@ static void format_buffer(const uint8_t * data, size_t size, char * buffer)
 /** Send a report to the device, running an on-device function.
  * May block if the outgoing queue is full.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier, for devices behind a unifying receiver.
- *                  for the receiver itself, or for directly attached devices, use
- *                  KEYLEDS_TARGET_DEFAULT.
  * @param feature_idx Address of the target feature.
  * @param function Code of the function. Meaning depends on specific feature.
  * @param length Size, in bytes of the payload.
  * @param data Pointer to the payload. Unused if length is 0.
  * @return `true` on success, `false` on failure.
  */
-bool keyleds_send(Keyleds * device, uint8_t target_id, uint8_t feature_idx,
+bool keyleds_send(Keyleds * device, uint8_t feature_idx,
                   uint8_t function, size_t length, const uint8_t * data)
 {
     assert(device != NULL);
@@ -218,7 +219,7 @@ bool keyleds_send(Keyleds * device, uint8_t target_id, uint8_t feature_idx,
     uint8_t buffer[1 + report_size];
 
     buffer[0] = device->reports[idx].id;
-    buffer[1] = target_id;
+    buffer[1] = device->target_id;
     buffer[2] = feature_idx;
     buffer[3] = (uint8_t)(function << 4 | device->app_id);
     if (length > 0) { memcpy(&buffer[4], data, length); }
@@ -250,9 +251,6 @@ bool keyleds_send(Keyleds * device, uint8_t target_id, uint8_t feature_idx,
  * Wait for incoming reports, filtering out irrelevant ones until either the expected
  * report is received or timeout occurs (see keyleds_set_timeout()).
  * @param device Open device as returned by keyleds_open().
- * @param target_id The device's target identifier, for devices behind a unifying receiver.
- *                  for the receiver itself, or for directly attached devices, use
- *                  KEYLEDS_TARGET_DEFAULT.
  * @param feature_idx Address of the feature we expect a report from.
  * @param [out] message A buffer to write data into. It must be large enough to
  *                      hold `device->max_report_size + 1` bytes.
@@ -260,7 +258,7 @@ bool keyleds_send(Keyleds * device, uint8_t target_id, uint8_t feature_idx,
  * @return `true` on success, `false` on failure.
  * @bug Timeout countdown restarts everytime a report is received.
  */
-bool keyleds_receive(Keyleds * device, uint8_t target_id, uint8_t feature_idx,
+bool keyleds_receive(Keyleds * device, uint8_t feature_idx,
                      uint8_t * message, size_t * size)
 {
     int err, idx;
@@ -319,7 +317,7 @@ bool keyleds_receive(Keyleds * device, uint8_t target_id, uint8_t feature_idx,
         keyleds_gkeys_filter(device, message, nread);
 
     } while(!(
-        message[1] == target_id && (                /* message is from this device */
+        message[1] == device->target_id && (                /* message is from this device */
         (
             message[2] == feature_idx &&            /* message is for correct feature */
             (message[3] & 0xf) == device->app_id    /* message is for our application */
@@ -353,9 +351,6 @@ bool keyleds_receive(Keyleds * device, uint8_t target_id, uint8_t feature_idx,
  * @param [out] result Buffer to copy the return payload into. May be NULL if not interested.
  * @param result_len Size of the result buffer. If received payload overflows, it will be
  *                   truncated.
- * @param target_id The device's target identifier, for devices behind a unifying receiver.
- *                  for the receiver itself, or for directly attached devices, use
- *                  KEYLEDS_TARGET_DEFAULT.
  * @param feature_id Code of the feature to call, from one of the `KEYLEDS_FEATURE_*` values.
  * @param function Code of the function. Meaning depends on specific feature.
  * @param length Size of the payload to send in report, pointed to by `data`.
@@ -364,7 +359,7 @@ bool keyleds_receive(Keyleds * device, uint8_t target_id, uint8_t feature_idx,
  *         `result_len` if the result was truncated. On error, -1 is returned instead.
  */
 ssize_t keyleds_call(Keyleds * device, uint8_t * result, size_t result_len,
-                     uint8_t target_id, uint16_t feature_id, uint8_t function,
+                     uint16_t feature_id, uint8_t function,
                      size_t length, const uint8_t * data)
 {
     assert(device != NULL);
@@ -377,16 +372,16 @@ ssize_t keyleds_call(Keyleds * device, uint8_t * result, size_t result_len,
         /* must be special cased, because KEYLEDS_FEATURE_IDX_ROOT is 0 */
         feature_idx = KEYLEDS_FEATURE_IDX_ROOT;
     } else {
-        feature_idx = keyleds_get_feature_index(device, target_id, feature_id);
+        feature_idx = keyleds_get_feature_index(device, feature_id);
         if (feature_idx == 0) { return -1; }
     }
 
     /* Exchange with the device */
-    if (!keyleds_send(device, target_id, feature_idx, function, length, data)) { return -1; }
+    if (!keyleds_send(device, feature_idx, function, length, data)) { return -1; }
 
     uint8_t buffer[1 + device->max_report_size];
     size_t nread;
-    if (!keyleds_receive(device, target_id, feature_idx, buffer, &nread)) { return -1; }
+    if (!keyleds_receive(device, feature_idx, buffer, &nread)) { return -1; }
 
     /* Copy payload, truncating to protect from buffer overflows */
     const uint8_t * res_data = keyleds_response_data(device, buffer);

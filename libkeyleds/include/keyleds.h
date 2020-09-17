@@ -36,7 +36,7 @@ typedef struct keyleds_device Keyleds;
 #define KEYLEDS_APP_ID_MIN  ((uint8_t)0x0)
 #define KEYLEDS_APP_ID_MAX  ((uint8_t)0xf)
 
-Keyleds * keyleds_open(const char * path, uint8_t app_id);
+Keyleds * keyleds_open(const char * path, uint8_t target_id, uint8_t app_id);
 void keyleds_close(Keyleds * device);
 void keyleds_set_timeout(Keyleds * device, unsigned us);
 int keyleds_device_fd(Keyleds * device);
@@ -52,12 +52,12 @@ typedef enum {
     KEYLEDS_DEVICE_HANDLER_FEATURE = (1<<7)
 } keyleds_device_handler_t;
 
-bool keyleds_get_protocol(Keyleds * device, uint8_t target_id,
+bool keyleds_get_protocol(Keyleds * device,
                           unsigned * version, keyleds_device_handler_t * handler);
-bool keyleds_ping(Keyleds * device, uint8_t target_id); /* re-sync with device after error */
-unsigned keyleds_get_feature_count(Keyleds * dev, uint8_t target_id);
-uint16_t keyleds_get_feature_id(Keyleds * dev, uint8_t target_id, uint8_t feature_idx);
-uint8_t keyleds_get_feature_index(Keyleds * dev, uint8_t target_id, uint16_t feature_id);
+bool keyleds_ping(Keyleds * device); /* re-sync with device after error */
+unsigned keyleds_get_feature_count(Keyleds * dev);
+uint16_t keyleds_get_feature_id(Keyleds * dev, uint8_t feature_idx);
+uint8_t keyleds_get_feature_index(Keyleds * dev, uint16_t feature_id);
 
 /****************************************************************************/
 /* Device information */
@@ -91,24 +91,24 @@ typedef enum {
     KEYLEDS_DEVICE_TYPE_RECEIVER = 7
 } keyleds_device_type_t;
 
-bool keyleds_get_device_name(Keyleds * device, uint8_t target_id,
+bool keyleds_get_device_name(Keyleds * device,
                              /*@out@*/ char ** out);    /* caller must free() on success */
 void keyleds_free_device_name(/*@only@*/ /*@out@*/ char *);
-bool keyleds_get_device_type(Keyleds * device, uint8_t target_id,
+bool keyleds_get_device_type(Keyleds * device,
                              /*@out@*/ keyleds_device_type_t * out);
-bool keyleds_get_device_version(Keyleds * device, uint8_t target_id,
+bool keyleds_get_device_version(Keyleds * device,
                                 /*@out@*/ struct keyleds_device_version ** out);
 void keyleds_free_device_version(/*@only@*/ /*@out@*/ struct keyleds_device_version *);
 
 /****************************************************************************/
 /* Gamemode feature */
 
-bool keyleds_gamemode_max(Keyleds * device, uint8_t target_id, /*@out@*/ unsigned * nb);
-bool keyleds_gamemode_set(Keyleds * device, uint8_t target_id,
+bool keyleds_gamemode_max(Keyleds * device, /*@out@*/ unsigned * nb);
+bool keyleds_gamemode_set(Keyleds * device,
                           const uint8_t * ids, unsigned ids_nb);    /* add some keys */
-bool keyleds_gamemode_clear(Keyleds * device, uint8_t target_id,
+bool keyleds_gamemode_clear(Keyleds * device,
                             const uint8_t * ids, unsigned ids_nb);  /* remove some keys */
-bool keyleds_gamemode_reset(Keyleds * device, uint8_t target_id);   /* remove all keys */
+bool keyleds_gamemode_reset(Keyleds * device);   /* remove all keys */
 
 /****************************************************************************/
 /* GKeys feature */
@@ -119,14 +119,14 @@ typedef enum {
     KEYLEDS_GKEYS_MRKEY,
 } keyleds_gkeys_type_t;
 
-typedef void (*keyleds_gkeys_cb)(Keyleds * device, uint8_t target_id,
+typedef void (*keyleds_gkeys_cb)(Keyleds * device,
                                  keyleds_gkeys_type_t, uint16_t mask, void *);
 
-bool keyleds_gkeys_count(Keyleds * device, uint8_t target_id, unsigned * nb);
-bool keyleds_gkeys_enable(Keyleds * device, uint8_t target_id, bool enabled);
-void keyleds_gkeys_set_cb(Keyleds * device, uint8_t target_id, keyleds_gkeys_cb, void * userdata);
-bool keyleds_mkeys_set(Keyleds * device, uint8_t target_id, uint8_t mask);
-bool keyleds_mrkeys_set(Keyleds * device, uint8_t target_id, uint8_t mask);
+bool keyleds_gkeys_count(Keyleds * device, unsigned * nb);
+bool keyleds_gkeys_enable(Keyleds * device, bool enabled);
+void keyleds_gkeys_set_cb(Keyleds * device, keyleds_gkeys_cb, void * userdata);
+bool keyleds_mkeys_set(Keyleds * device, uint8_t mask);
+bool keyleds_mrkeys_set(Keyleds * device, uint8_t mask);
 
 /****************************************************************************/
 /* Keyboard layout feature */
@@ -136,15 +136,15 @@ typedef enum {
     KEYLEDS_KEYBOARD_LAYOUT_INVALID = -1
 } keyleds_keyboard_layout_t;
 
-keyleds_keyboard_layout_t keyleds_keyboard_layout(Keyleds * device, uint8_t target_id);
+keyleds_keyboard_layout_t keyleds_keyboard_layout(Keyleds * device);
 
 /****************************************************************************/
 /* Reportrate feature */
 
-bool keyleds_get_reportrates(Keyleds * device, uint8_t target_id, /*@out@*/ unsigned ** out);
+bool keyleds_get_reportrates(Keyleds * device, /*@out@*/ unsigned ** out);
 void keyleds_free_reportrates(unsigned *);
-bool keyleds_get_reportrate(Keyleds * device, uint8_t target_id, /*@out@*/ unsigned * rate);
-bool keyleds_set_reportrate(Keyleds * device, uint8_t target_id, unsigned rate);
+bool keyleds_get_reportrate(Keyleds * device, /*@out@*/ unsigned * rate);
+bool keyleds_set_reportrate(Keyleds * device, unsigned rate);
 
 /****************************************************************************/
 /* Leds features */
@@ -177,16 +177,16 @@ struct keyleds_key_color {
 };
 #define KEYLEDS_KEY_ID_INVALID  (0)
 
-bool keyleds_get_block_info(Keyleds * device, uint8_t target_id,
+bool keyleds_get_block_info(Keyleds * device,
                             /*@out@*/ struct keyleds_keyblocks_info ** out);
 void keyleds_free_block_info(/*@only@*/ /*@out@*/ struct keyleds_keyblocks_info * info);
-bool keyleds_get_leds(Keyleds * device, uint8_t target_id, keyleds_block_id_t block_id,
+bool keyleds_get_leds(Keyleds * device, keyleds_block_id_t block_id,
                       struct keyleds_key_color * keys, uint16_t offset, unsigned keys_nb);
-bool keyleds_set_leds(Keyleds * device, uint8_t target_id, keyleds_block_id_t block_id,
+bool keyleds_set_leds(Keyleds * device, keyleds_block_id_t block_id,
                       const struct keyleds_key_color * keys, unsigned keys_nb);
-bool keyleds_set_led_block(Keyleds * device, uint8_t target_id, keyleds_block_id_t block_id,
+bool keyleds_set_led_block(Keyleds * device, keyleds_block_id_t block_id,
                            uint8_t red, uint8_t green, uint8_t blue);
-bool keyleds_commit_leds(Keyleds * device, uint8_t target_id);
+bool keyleds_commit_leds(Keyleds * device);
 
 /****************************************************************************/
 /* Error and logging */

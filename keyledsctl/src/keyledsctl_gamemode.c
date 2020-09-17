@@ -94,10 +94,9 @@ int main_gamemode(int argc, char * argv[])
     device = auto_select_device(options.device);
     if (device == NULL) { return 2; }
 
-    if (!keyleds_gamemode_reset(device, KEYLEDS_TARGET_DEFAULT) ||
+    if (!keyleds_gamemode_reset(device) ||
         (options.key_ids_nb > 0 &&
-         !keyleds_gamemode_set(device, KEYLEDS_TARGET_DEFAULT,
-                               options.key_ids, options.key_ids_nb))) {
+         !keyleds_gamemode_set(device, options.key_ids, options.key_ids_nb))) {
         fprintf(stderr, "Clear all gamemode keys failed: %s\n", keyleds_get_error_str());
         result = 2;
     }

@@ -37,6 +37,9 @@ struct keyleds_device_feature {
 
 struct keyleds_device {
     int         fd;                             /* device file descriptor */
+    uint8_t     target_id;                      /* Device's target identifier, for devices behind a unifying receiver.
+                                                 * for the receiver itself, or for directly attached devices, use
+                                                 * KEYLEDS_TARGET_DEFAULT. */
     uint8_t     app_id;                         /* our application identifier */
     uint8_t     ping_seq;                       /* using for resyncing after errors */
     unsigned    timeout;                        /* read timeout in microseconds */
@@ -54,12 +57,12 @@ struct keyleds_device {
 /****************************************************************************/
 /* Core functions */
 
-bool keyleds_send(Keyleds * device, uint8_t target_id, uint8_t feature_idx,
+bool keyleds_send(Keyleds * device, uint8_t feature_idx,
                   uint8_t function, size_t length, const uint8_t * data);
-bool keyleds_receive(Keyleds * device, uint8_t target_id, uint8_t feature_idx,
+bool keyleds_receive(Keyleds * device, uint8_t feature_idx,
                      uint8_t * message, size_t * size);
 ssize_t keyleds_call(Keyleds * device, /*@null@*/ /*@out@*/ uint8_t * result, size_t result_len,
-                     uint8_t target_id, uint16_t feature_id, uint8_t function,
+                     uint16_t feature_id, uint8_t function,
                      size_t length, const uint8_t * data);
 
 void keyleds_gkeys_filter(Keyleds * device, uint8_t buffer[], ssize_t buflen);

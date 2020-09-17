@@ -77,7 +77,7 @@ int main_get_leds(int argc, char * argv[])
     device = auto_select_device(options.device);
     if (device == NULL) { return 2; }
 
-    if (!keyleds_get_block_info(device, KEYLEDS_TARGET_DEFAULT, &led_info)) {
+    if (!keyleds_get_block_info(device, &led_info)) {
         fprintf(stderr, "Fetching led info failed: %s\n", keyleds_get_error_str());
         return 3;
     }
@@ -95,7 +95,7 @@ int main_get_leds(int argc, char * argv[])
 
     {
     struct keyleds_key_color keys[nb_keys];
-    if (!keyleds_get_leds(device, KEYLEDS_TARGET_DEFAULT, options.block_id,
+    if (!keyleds_get_leds(device, options.block_id,
                           keys, 0, nb_keys)) {
         fprintf(stderr, "Failed to read led status: %s\n", keyleds_get_error_str());
         return 5;

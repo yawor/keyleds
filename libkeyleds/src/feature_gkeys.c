@@ -39,11 +39,10 @@ enum mrkeys_feature_function {   /* Function table for KEYLEDS_FEATURE_MRKEYS */
 
 /** Get the number of GKeys.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param [out] nb Number of GKeys on keyboard.
  * @return `true` on success, `false` on error.
  */
-KEYLEDS_EXPORT bool keyleds_gkeys_count(Keyleds * device, uint8_t target_id, unsigned * nb)
+KEYLEDS_EXPORT bool keyleds_gkeys_count(Keyleds * device, unsigned * nb)
 {
     uint8_t data[1];
 
@@ -51,7 +50,7 @@ KEYLEDS_EXPORT bool keyleds_gkeys_count(Keyleds * device, uint8_t target_id, uns
     assert(nb != NULL);
 
     if (keyleds_call(device, data, sizeof(data),
-                     target_id, KEYLEDS_FEATURE_GKEYS, F_GET_GKEYS_COUNT,
+                     KEYLEDS_FEATURE_GKEYS, F_GET_GKEYS_COUNT,
                      0, NULL) < 0) {
         return false;
     }
@@ -62,16 +61,15 @@ KEYLEDS_EXPORT bool keyleds_gkeys_count(Keyleds * device, uint8_t target_id, uns
 
 /** Enable or disable custom GKeys behavior.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param enabled `true` to enable, `false` to disable. When disabled, keys map to F keys.
  * @return `true` on success, `false` on error.
  */
-KEYLEDS_EXPORT bool keyleds_gkeys_enable(Keyleds * device, uint8_t target_id, bool enabled)
+KEYLEDS_EXPORT bool keyleds_gkeys_enable(Keyleds * device, bool enabled)
 {
     assert(device != NULL);
 
     if (keyleds_call(device, NULL, 0,
-                     target_id, KEYLEDS_FEATURE_GKEYS, F_ENABLE_GKEYS,
+                     KEYLEDS_FEATURE_GKEYS, F_ENABLE_GKEYS,
                      1, (uint8_t[]){(uint8_t)(enabled ? 1u : 0u)}) < 0) {
         return false;
     }
@@ -80,32 +78,29 @@ KEYLEDS_EXPORT bool keyleds_gkeys_enable(Keyleds * device, uint8_t target_id, bo
 
 /** Enable or disable custom GKeys behavior.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param cb Device's target identifier. See keyleds_open().
  * @param userdata `true` to enable, `false` to disable. When disabled, keys map to F keys.
  */
-KEYLEDS_EXPORT void keyleds_gkeys_set_cb(Keyleds * device, uint8_t target_id,
-                                         keyleds_gkeys_cb cb, void * userdata)
+KEYLEDS_EXPORT void keyleds_gkeys_set_cb(Keyleds * device, keyleds_gkeys_cb cb, void * userdata)
 {
-    keyleds_get_feature_index(device, target_id, KEYLEDS_FEATURE_GKEYS);
-    keyleds_get_feature_index(device, target_id, KEYLEDS_FEATURE_MKEYS);
-    keyleds_get_feature_index(device, target_id, KEYLEDS_FEATURE_MRKEYS);
+    keyleds_get_feature_index(device, KEYLEDS_FEATURE_GKEYS);
+    keyleds_get_feature_index(device, KEYLEDS_FEATURE_MKEYS);
+    keyleds_get_feature_index(device, KEYLEDS_FEATURE_MRKEYS);
     device->gkeys_cb = cb;
     device->userdata = userdata;
 }
 
 /** Set lit MKeys
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param mask A bit mask of MKeys leds to turn on, bit0 for M1, bit1 for M2, …
  * @return `true` on success, `false` on error.
  */
-KEYLEDS_EXPORT bool keyleds_mkeys_set(Keyleds * device, uint8_t target_id, uint8_t mask)
+KEYLEDS_EXPORT bool keyleds_mkeys_set(Keyleds * device, uint8_t mask)
 {
     assert(device != NULL);
 
     if (keyleds_call(device, NULL, 0,
-                     target_id, KEYLEDS_FEATURE_MKEYS, F_SET_MKEYS,
+                     KEYLEDS_FEATURE_MKEYS, F_SET_MKEYS,
                      1, (uint8_t[]){mask}) < 0) {
         return false;
     }
@@ -114,16 +109,15 @@ KEYLEDS_EXPORT bool keyleds_mkeys_set(Keyleds * device, uint8_t target_id, uint8
 
 /** Set lit MRKeys
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @param mask A bit mask of MRKeys leds to turn on, bit0 for MR.
  * @return `true` on success, `false` on error.
  */
-KEYLEDS_EXPORT bool keyleds_mrkeys_set(Keyleds * device, uint8_t target_id, uint8_t mask)
+KEYLEDS_EXPORT bool keyleds_mrkeys_set(Keyleds * device, uint8_t mask)
 {
     assert(device != NULL);
 
     if (keyleds_call(device, NULL, 0,
-                     target_id, KEYLEDS_FEATURE_MRKEYS, F_SET_MRKEYS,
+                     KEYLEDS_FEATURE_MRKEYS, F_SET_MRKEYS,
                      1, (uint8_t[]){mask}) < 0) {
         return false;
     }
@@ -137,20 +131,21 @@ void keyleds_gkeys_filter(Keyleds * device, uint8_t message[], ssize_t buflen)
     keyleds_gkeys_cb callback = device->gkeys_cb;
     if (!callback) { return; }
 
-    uint8_t target_id = message[1];
+    // TODO: what to do with this target_id? Compare to device->target_id?
+    //uint8_t target_id = message[1];
     uint8_t feature_idx = message[2];
     keyleds_gkeys_type_t key_type;
 
-    if (feature_idx == keyleds_get_feature_index(device, target_id, KEYLEDS_FEATURE_GKEYS)) {
+    if (feature_idx == keyleds_get_feature_index(device, KEYLEDS_FEATURE_GKEYS)) {
         key_type = KEYLEDS_GKEYS_GKEY;
-    } else if (feature_idx == keyleds_get_feature_index(device, target_id, KEYLEDS_FEATURE_GKEYS)) {
+    } else if (feature_idx == keyleds_get_feature_index(device, KEYLEDS_FEATURE_GKEYS)) {
         key_type = KEYLEDS_GKEYS_MKEY;
-    } else if (feature_idx == keyleds_get_feature_index(device, target_id, KEYLEDS_FEATURE_GKEYS)) {
+    } else if (feature_idx == keyleds_get_feature_index(device, KEYLEDS_FEATURE_GKEYS)) {
         key_type = KEYLEDS_GKEYS_MRKEY;
     } else {
         return;
     }
 
-    callback(device, target_id, key_type,
+    callback(device, key_type,
              (uint16_t)(message[3] << 8 | message[4]), device->userdata);
 }

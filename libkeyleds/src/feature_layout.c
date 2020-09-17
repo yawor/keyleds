@@ -32,17 +32,16 @@ enum layout_feature_function {    /* Function table for KEYLEDS_FEATURE_KEYBOARD
 
 /** Get the layout declared by the keyboard.
  * @param device Open device as returned by keyleds_open().
- * @param target_id Device's target identifier. See keyleds_open().
  * @return Layout code on success, `KEYLEDS_KEYBOARD_LAYOUT_INVALID` on error.
  */
-KEYLEDS_EXPORT keyleds_keyboard_layout_t keyleds_keyboard_layout(Keyleds * device, uint8_t target_id)
+KEYLEDS_EXPORT keyleds_keyboard_layout_t keyleds_keyboard_layout(Keyleds * device)
 {
     uint8_t data[1];
 
     assert(device != NULL);
 
     if (keyleds_call(device, data, sizeof(data),
-                     target_id, KEYLEDS_FEATURE_KEYBOARD_LAYOUT_2, F_GET_LAYOUT, 0, NULL) < 0) {
+                     KEYLEDS_FEATURE_KEYBOARD_LAYOUT_2, F_GET_LAYOUT, 0, NULL) < 0) {
         return KEYLEDS_KEYBOARD_LAYOUT_INVALID;
     }
     return (keyleds_keyboard_layout_t)data[0];
