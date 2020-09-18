@@ -31,6 +31,7 @@ set(libkeyleds_SRCS
     src/feature_gkeys.c
     src/feature_layout.c
     src/feature_leds.c
+    src/feature_leds2.c
     src/feature_reportrate.c
     src/feature_version.c
     src/hid_parser.c

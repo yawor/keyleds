@@ -189,6 +189,12 @@ bool keyleds_set_led_block(Keyleds * device, keyleds_block_id_t block_id,
 bool keyleds_commit_leds(Keyleds * device);
 
 /****************************************************************************/
+/* Leds v2 features */
+
+bool keyleds_set_leds2(Keyleds * device, const struct keyleds_key_color * keys, unsigned keys_nb);
+bool keyleds_commit_leds2(Keyleds * device);
+
+/****************************************************************************/
 /* Error and logging */
 
 typedef enum {
